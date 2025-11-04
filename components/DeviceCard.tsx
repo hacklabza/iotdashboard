@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Device } from '@/types/device';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -10,6 +10,28 @@ interface DeviceCardProps {
 
 export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
   const { colors } = useTheme();
+
+  // Generate static map URL with marker
+  const getStaticMapUrl = () => {
+    if (!device.location?.position?.coordinates) {
+      console.log('No location data:', device.location);
+      return null;
+    }
+
+    console.log('Full coordinates object:', JSON.stringify(device.location.position.coordinates));
+
+    // Check if coordinates is an array [longitude, latitude] or object
+    const [longitude, latitude] = device.location.position.coordinates;
+
+    const zoom = 17;
+    const width = 600;
+    const height = 200;
+
+    const url = `https://static-maps.yandex.ru/1.x/?ll=${longitude},${latitude}&size=${width},${height}&z=${zoom}&l=map&pt=${longitude},${latitude},pm2rdm`;
+    return url;
+  };
+
+  const mapUrl = getStaticMapUrl();
 
   return (
     <TouchableOpacity
@@ -45,9 +67,28 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
         <Text style={[styles.description, { color: colors.textSecondary }]}>{device.description}</Text>
       )}
 
+      {mapUrl && (
+        <View style={styles.mapContainer}>
+          <Image
+            source={{ uri: mapUrl }}
+            style={styles.mapImage}
+            resizeMode="cover"
+          />
+          {device.location?.name && (
+            <View style={[styles.locationLabel, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.locationText, { color: colors.text }]}>
+                📍 {device.location.name}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       <View style={styles.footer}>
-        <Text style={[styles.id, { color: colors.textTertiary }]}>ID: {device.id.substring(0, 8)}...</Text>
-        <Text style={[styles.type, { color: colors.textTertiary }]}>Type: {device.type.name}</Text>
+        <Text style={[styles.deviceDetail, { color: colors.textTertiary }]}>ID: {device.id.substring(0, 8)}...</Text>
+        <Text style={[styles.deviceDetail, { color: colors.textTertiary }]}>Type: {device.type.name}</Text>
+        <Text style={[styles.deviceDetail, { color: colors.textTertiary }]}>IP: {device.ip_address}</Text>
+        <Text style={[styles.deviceDetail, { color: colors.textTertiary }]}>MAC: {device.mac_address}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -102,16 +143,49 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 20,
   },
+  mapContainer: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 12,
+    position: 'relative',
+  },
+  mapImage: {
+    width: '100%',
+    height: '100%',
+  },
+  locationLabel: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    right: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  locationText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   footer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginTop: 8,
+    gap: 8,
   },
-  id: {
+  deviceDetail: {
     fontSize: 12,
-  },
-  type: {
-    fontSize: 12,
+    width: '48%',
   },
   timestamp: {
     fontSize: 11,

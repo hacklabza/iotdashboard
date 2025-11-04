@@ -3,6 +3,15 @@ export interface DeviceType {
   name: string;
 }
 
+export interface DeviceLocation {
+  id: number;
+  name: string;
+  position: {
+    type: string;
+    coordinates: [number, number];
+  };
+}
+
 export interface DeviceHealth {
   id: number;
   status: boolean;
@@ -74,7 +83,10 @@ export interface Device {
   id: string;
   name: string;
   type: DeviceType;
+  location: DeviceLocation;
   active: boolean;
+  ip_address: string;
+  mac_address: string;
   health?: DeviceHealth;
   last_status?: DeviceStatus;
   aggregated_status?: AggregatedStatus;
