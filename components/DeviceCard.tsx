@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Device } from '@/types/device';
+import { useTheme } from '@/hooks/useTheme';
 
 interface DeviceCardProps {
   device: Device;
@@ -8,50 +9,56 @@ interface DeviceCardProps {
 }
 
 export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
+  const { colors } = useTheme();
+
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.shadow }]}
       onPress={() => onPress?.(device)}
       activeOpacity={0.7}
     >
       <View style={styles.header}>
-        <Text style={styles.name}>{device.name}</Text>
-        <View style={[
-          styles.statusBadge,
-          { backgroundColor: device.active ? '#4CAF50' : '#9E9E9E' }
-        ]}>
-          <Text style={styles.statusText}>
-            {device.active ? 'Active' : 'Inactive'}
-          </Text>
+        <Text style={[styles.name, { color: colors.text }]}>{device.name}</Text>
+        <View style={styles.badges}>
+          <View style={[
+            styles.statusBadge,
+            { backgroundColor: device.active ? colors.success : colors.inactive }
+          ]}>
+            <Text style={[styles.statusText, { color: colors.primaryText }]}>
+              {device.active ? 'Active' : 'Inactive'}
+            </Text>
+          </View>
+          {device.health && (
+            <View style={[
+              styles.healthBadge,
+              { backgroundColor: device.health.status ? colors.info : colors.warning }
+            ]}>
+              <Text style={[styles.statusText, { color: colors.primaryText }]}>
+                {device.health.status ? '✓ Healthy' : '⚠ Unhealthy'}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
       {device.description && (
-        <Text style={styles.description}>{device.description}</Text>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>{device.description}</Text>
       )}
 
       <View style={styles.footer}>
-        <Text style={styles.id}>ID: {device.id.substring(0, 8)}...</Text>
-        <Text style={styles.type}>Type: {device.type.name}</Text>
+        <Text style={[styles.id, { color: colors.textTertiary }]}>ID: {device.id.substring(0, 8)}...</Text>
+        <Text style={[styles.type, { color: colors.textTertiary }]}>Type: {device.type.name}</Text>
       </View>
-
-      {device.updated_at && (
-        <Text style={styles.timestamp}>
-          Updated: {new Date(device.updated_at).toLocaleDateString()}
-        </Text>
-      )}
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 8,
-    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -69,22 +76,29 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
     flex: 1,
+    marginRight: 8,
+  },
+  badges: {
+    flexDirection: 'row',
+    gap: 6,
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
+  healthBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
   statusText: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
   },
   description: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -95,15 +109,12 @@ const styles = StyleSheet.create({
   },
   id: {
     fontSize: 12,
-    color: '#999',
   },
   type: {
     fontSize: 12,
-    color: '#999',
   },
   timestamp: {
     fontSize: 11,
-    color: '#BBB',
     marginTop: 8,
   },
 });

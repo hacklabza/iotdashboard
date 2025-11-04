@@ -1,12 +1,14 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, View, StatusBar } from "react-native";
+import { useTheme } from "@/hooks/useTheme";
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const { colors, colorScheme } = useTheme();
 
   useEffect(() => {
     if (isLoading) return;
@@ -24,17 +26,21 @@ function RootLayoutNav() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="login" />
-    </Stack>
+    <>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+      </Stack>
+    </>
   );
 }
 

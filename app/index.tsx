@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View, FlatList, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { DeviceCard } from '@/components/DeviceCard';
+import { DeviceDetailsModal } from '@/components/DeviceDetailsModal';
 import { deviceService } from '@/services/api/deviceService';
 import { Device } from '@/types/device';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function Index() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const { token, logout } = useAuth();
+  const { colors } = useTheme();
 
   const fetchDevices = async () => {
     if (!token) {
@@ -38,8 +43,13 @@ export default function Index() {
   };
 
   const handleDevicePress = (device: Device) => {
-    console.log('Device pressed:', device);
-    // You can add navigation or other actions here
+    setSelectedDevice(device);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedDevice(null);
   };
 
   useEffect(() => {
@@ -48,18 +58,18 @@ export default function Index() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading devices...</Text>
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading devices...</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>⚠️ {error}</Text>
-        <Text style={styles.errorHint}>
+      <View style={[styles.centerContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.error }]}>⚠️ {error}</Text>
+        <Text style={[styles.errorHint, { color: colors.textSecondary }]}>
           Make sure the API server is running and the URL is configured correctly in deviceService.ts
         </Text>
       </View>
@@ -75,15 +85,17 @@ export default function Index() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.title}>IoT Devices</Text>
-            <Text style={styles.subtitle}>{devices.length} device{devices.length !== 1 ? 's' : ''} found</Text>
+            <Text style={[styles.title, { color: colors.text }]}>IoT Devices</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              {devices.length} device{devices.length !== 1 ? 's' : ''} found
+            </Text>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>Logout</Text>
+          <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.error }]} onPress={handleLogout}>
+            <Text style={[styles.logoutButtonText, { color: colors.primaryText }]}>Logout</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -96,14 +108,25 @@ export default function Index() {
         )}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No devices found</Text>
-            <Text style={styles.emptyHint}>Pull down to refresh</Text>
+            <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No devices found</Text>
+            <Text style={[styles.emptyHint, { color: colors.textDisabled }]}>Pull down to refresh</Text>
           </View>
         }
+      />
+
+      <DeviceDetailsModal
+        visible={modalVisible}
+        device={selectedDevice}
+        onClose={closeModal}
       />
     </View>
   );
@@ -112,22 +135,18 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
   header: {
     paddingTop: 60,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   headerTop: {
     flexDirection: 'row',
@@ -137,21 +156,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
     marginTop: 4,
   },
   logoutButton: {
-    backgroundColor: '#ff3b30',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
   },
   logoutButtonText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -161,17 +176,14 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
   },
   errorText: {
     fontSize: 16,
-    color: '#d32f2f',
     textAlign: 'center',
     marginBottom: 8,
   },
   errorHint: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
     paddingHorizontal: 20,
   },
@@ -181,11 +193,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#999',
     marginBottom: 8,
   },
   emptyHint: {
     fontSize: 14,
-    color: '#BBB',
   },
 });
