@@ -1,13 +1,23 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 import moment from 'moment';
 import { Device } from '@/types/device';
 import { useTheme } from '@/hooks/useTheme';
+import { deviceService } from '@/services/api/deviceService';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatDateInterval } from '@/utils/formatters';
+import { getColorValue } from '@/utils/helpers';
+import { normalizeStatusItems } from '@/utils/normalize';
 
 interface DeviceDetailsModalProps {
   visible: boolean;
   device: Device | null;
   onClose: () => void;
+}
+
+interface HistoricalData {
+  [key: string]: Array<{ timestamp: string; value: number }>;
 }
 
 export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
@@ -16,123 +26,87 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
   onClose,
 }) => {
   const { colors } = useTheme();
+  const { token } = useAuth();
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [historicalData, setHistoricalData] = useState<HistoricalData>({});
+  const [loadingData, setLoadingData] = useState<string | null>(null);
 
-  // Helper function to get display config for a status value
-  const getDisplayConfig = (statusKey: string) => {
-    if (!device?.pins) return null;
+  // Fetch historical data for a specific status key
+  const fetchHistoricalData = async (statusKey: string) => {
+    if (!device || !token) return;
 
-    for (const pin of device.pins) {
-      const displayItem = pin.display.find(d => d.value === statusKey && d.visible);
-      if (displayItem) {
-        return displayItem;
-      }
-    }
-    return null;
-  };
+    setLoadingData(statusKey);
+    try {
+      const endDate = moment();
+      const startDate = moment().subtract(72, 'hours');
+      const sampleSize = 6;
 
-  // Helper function to get color value
-  const getColorValue = (colorName: string) => {
-    const colorMap: { [key: string]: string } = {
-      red: '#EF5350',
-      blue: '#42A5F5',
-      green: '#66BB6A',
-      yellow: '#FFEE58',
-      orange: '#FFA726',
-      purple: '#AB47BC',
-      pink: '#EC407A',
-      teal: '#26A69A',
-      cyan: '#26C6DA',
-      lime: '#D4E157',
-      amber: '#FFCA28',
-      indigo: '#5C6BC0',
-    };
-    return colorMap[colorName.toLowerCase()] || colors.primary;
-  };
+      const response = await deviceService.getDeviceStatuses(
+        token,
+        device.id,
+        startDate.toISOString(),
+        endDate.toISOString(),
+        sampleSize
+      );
 
-  // Helper function to flatten nested status structure with display config
-  const getStatusItems = () => {
-    if (!device?.last_status?.status) return [];
+      // Parse the response and extract data for the specific status key
+      const dataPoints: Array<{ timestamp: string; value: number }> = [];
 
-    const items: Array<{
-      key: string;
-      value: string | number;
-      label: string;
-      icon?: string;
-      color?: string;
-      unit?: string;
-      aggregation?: {
-        minimum: number;
-        maximum: number;
-        average: number;
-      };
-    }> = [];
+      if (response.results) {
+        response.results.forEach((status: any) => {
+          const keys = statusKey.split('.');
+          let value = status.status;
 
-    Object.entries(device.last_status.status).forEach(([key, value]) => {
-      if (typeof value === 'object' && value !== null) {
-        // Handle nested objects like dht-sensor
-        Object.entries(value).forEach(([subKey, subValue]) => {
-          const statusKey = `${key}.${subKey}`;
-          const displayConfig = getDisplayConfig(statusKey);
-
-          // Get aggregated status for this nested value
-          let aggregation;
-          if (device.aggregated_status && device.aggregated_status[key]) {
-            const aggKey = device.aggregated_status[key];
-            if (typeof aggKey === 'object' && 'minimum' in aggKey && 'maximum' in aggKey) {
-              // Direct aggregation object
-              aggregation = undefined;
-            } else if (typeof aggKey === 'object') {
-              // Nested aggregation object
-              const nestedAgg = aggKey as Record<string, any>;
-              if (nestedAgg[subKey] && typeof nestedAgg[subKey] === 'object') {
-                aggregation = nestedAgg[subKey] as { minimum: number; maximum: number; average: number };
-              }
+          // Navigate through nested structure
+          for (const key of keys) {
+            if (value && typeof value === 'object') {
+              value = value[key];
             }
           }
 
-          if (!displayConfig || displayConfig.visible) {
-            items.push({
-              key: statusKey,
-              value: subValue,
-              label: displayConfig?.label || subKey,
-              icon: displayConfig?.icon,
-              color: displayConfig?.colour,
-              unit: displayConfig?.unit_of_measure,
-              aggregation,
+          if (typeof value === 'number') {
+            dataPoints.push({
+              timestamp: status.created_at,
+              value: value,
             });
           }
         });
-      } else {
-        // Handle direct values like light-sensor
-        const displayConfig = getDisplayConfig(key);
-
-        // Get aggregated status for this direct value
-        let aggregation;
-        if (device.aggregated_status && device.aggregated_status[key]) {
-          const aggData = device.aggregated_status[key];
-          if ('minimum' in aggData && 'maximum' in aggData && 'average' in aggData) {
-            aggregation = aggData as { minimum: number; maximum: number; average: number };
-          }
-        }
-
-        if (!displayConfig || displayConfig.visible) {
-          items.push({
-            key,
-            value,
-            label: displayConfig?.label || key,
-            icon: displayConfig?.icon,
-            color: displayConfig?.colour,
-            unit: displayConfig?.unit_of_measure,
-            aggregation,
-          });
-        }
       }
-    });
 
-    return items;
+      setHistoricalData((prev) => ({
+        ...prev,
+        [statusKey]: dataPoints,
+      }));
+    } catch (error) {
+      console.error('Error fetching historical data:', error);
+    } finally {
+      setLoadingData(null);
+    }
   };
 
-  const statusItems = getStatusItems();
+  // Handle card click
+  const handleCardPress = async (statusKey: string) => {
+    if (expandedCard === statusKey) {
+      // Collapse if already expanded
+      setExpandedCard(null);
+    } else {
+      // Expand and fetch data if not already loaded
+      setExpandedCard(statusKey);
+      if (!historicalData[statusKey]) {
+        await fetchHistoricalData(statusKey);
+      }
+    }
+  };
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!visible) {
+      setExpandedCard(null);
+      setHistoricalData({});
+    }
+  }, [visible]);
+
+  const statusItems = normalizeStatusItems(device || undefined);
 
   return (
     <Modal
@@ -154,6 +128,11 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                   {statusItems.length > 0 ? (
                     <View style={styles.statusGrid}>
                       {statusItems.map((item) => {
+                        const isExpanded = expandedCard === item.key;
+                        const isHidden = expandedCard !== null && expandedCard !== item.key;
+
+                        if (isHidden) return null;
+
                         const cardColor = item.color ? getColorValue(item.color) : colors.primary;
                         const iconMap: { [key: string]: string } = {
                           thermometer: '🌡️',
@@ -170,7 +149,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                         const unit = item.unit ? unitMap[item.unit.toLowerCase()] || item.unit : '';
 
                         return (
-                          <View
+                          <TouchableOpacity
                             key={item.key}
                             style={[
                               styles.statusCard,
@@ -180,6 +159,8 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                                 borderLeftColor: cardColor,
                               }
                             ]}
+                            onPress={() => handleCardPress(item.key)}
+                            activeOpacity={0.7}
                           >
                             <View style={styles.cardHeader}>
                               <View style={styles.cardHeaderLeft}>
@@ -234,7 +215,62 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                                 </View>
                               </View>
                             )}
-                          </View>
+
+                            {isExpanded && (
+                              <View style={styles.chartContainer}>
+                                {loadingData === item.key ? (
+                                  <ActivityIndicator size="large" color={cardColor} />
+                                ) : historicalData[item.key] && historicalData[item.key].length > 0 ? (
+                                  <>
+                                    <Text style={[styles.chartTitle, { color: colors.text }]}>
+                                      Last 72 Hours
+                                    </Text>
+                                    <LineChart
+                                      data={{
+                                        labels: historicalData[item.key]
+                                          .filter((_, index) => index % Math.ceil(historicalData[item.key].length / 6) === 0)
+                                          .map(d => formatDateInterval(moment(d.timestamp).toDate())),
+                                        datasets: [{
+                                          data: historicalData[item.key].map(d => d.value),
+                                          color: () => cardColor,
+                                          strokeWidth: 2,
+                                        }]
+                                      }}
+                                      width={Dimensions.get('window').width - 80}
+                                      height={220}
+                                      chartConfig={{
+                                        backgroundColor: colors.surface,
+                                        backgroundGradientFrom: colors.surface,
+                                        backgroundGradientTo: colors.surface,
+                                        decimalPlaces: 1,
+                                        color: (opacity = 1) => `rgba(${parseInt(cardColor.slice(1, 3), 16)}, ${parseInt(cardColor.slice(3, 5), 16)}, ${parseInt(cardColor.slice(5, 7), 16)}, ${opacity})`,
+                                        labelColor: () => colors.text,
+                                        style: {
+                                          borderRadius: 16
+                                        },
+                                        propsForDots: {
+                                          r: '0',
+                                        },
+                                        propsForBackgroundLines: {
+                                          strokeDasharray: '',
+                                          stroke: 'transparent',
+                                        }
+                                      }}
+                                      withDots={false}
+                                      withInnerLines={false}
+                                      withOuterLines={false}
+                                      bezier
+                                      style={styles.chart}
+                                    />
+                                  </>
+                                ) : (
+                                  <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
+                                    No historical data available
+                                  </Text>
+                                )}
+                              </View>
+                            )}
+                          </TouchableOpacity>
                         );
                       })}
                     </View>
@@ -389,5 +425,27 @@ const styles = StyleSheet.create({
   aggregationValue: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  chartContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    alignItems: 'center',
+  },
+  chartTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  noDataText: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 20,
   },
 });

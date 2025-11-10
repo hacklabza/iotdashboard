@@ -14,11 +14,8 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
   // Generate static map URL with marker
   const getStaticMapUrl = () => {
     if (!device.location?.position?.coordinates) {
-      console.log('No location data:', device.location);
       return null;
     }
-
-    console.log('Full coordinates object:', JSON.stringify(device.location.position.coordinates));
 
     // Check if coordinates is an array [longitude, latitude] or object
     const [longitude, latitude] = device.location.position.coordinates;

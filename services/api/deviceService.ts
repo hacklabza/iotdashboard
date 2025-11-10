@@ -112,4 +112,49 @@ export const deviceService = {
       throw error;
     }
   },
+
+  /**
+   * Fetch historical device statuses
+   * @param token Authentication token
+   * @param deviceId Device UUID
+   * @param startDate Start date for the query (ISO string)
+   * @param endDate End date for the query (ISO string)
+   * @returns Promise with array of device statuses
+   */
+  async getDeviceStatuses(
+    token: string,
+    deviceId: string,
+    startDate: string,
+    endDate: string,
+    sampleSize: number
+  ): Promise<any> {
+    try {
+      const queryParams = new URLSearchParams({
+        device: deviceId,
+        start_date: startDate,
+        end_date: endDate,
+        sample_size: sampleSize.toString(),
+      });
+
+      const url = `${API_BASE_URL}/api/devices/statuses/?${queryParams.toString()}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching device statuses:', error);
+      throw error;
+    }
+  },
 };
