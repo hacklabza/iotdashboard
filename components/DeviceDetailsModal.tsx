@@ -14,6 +14,7 @@ interface DeviceDetailsModalProps {
   visible: boolean;
   device: Device | null;
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
 interface HistoricalData {
@@ -24,12 +25,32 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
   visible,
   device,
   onClose,
+  onRefresh,
 }) => {
   const { colors } = useTheme();
   const { token } = useAuth();
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalData>({});
   const [loadingData, setLoadingData] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+      // Also refresh the expanded card data if any
+      if (expandedCard) {
+        await fetchHistoricalData(expandedCard);
+      }
+    } catch (error) {
+      console.error('Error refreshing:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Fetch historical data for a specific status key
   const fetchHistoricalData = async (statusKey: string) => {
@@ -120,9 +141,18 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
                 <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                     <Text style={[styles.modalTitle, { color: colors.text }]}>{device.name}</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                    <Text style={[styles.closeButtonText, { color: colors.primary }]}>Close</Text>
-                    </TouchableOpacity>
+                    <View style={styles.headerActions}>
+                      <TouchableOpacity
+                        onPress={handleRefresh}
+                        style={styles.refreshButton}
+                        disabled={isRefreshing}
+                      >
+                        <Text style={[styles.refreshButtonText, { color: colors.primary }]}>↻</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                        <Text style={[styles.closeButtonText, { color: colors.primary }]}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
                 </View>
                 <ScrollView style={styles.modalBody}>
                   {statusItems.length > 0 ? (
@@ -321,11 +351,23 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  refreshButton: {
+    padding: 5,
+  },
+  refreshButtonText: {
+    fontSize: 24,
+    fontWeight: '600',
+  },
   closeButton: {
     padding: 5,
   },
   closeButtonText: {
-    fontSize: 16,
+    fontSize: 24,
     fontWeight: '600',
   },
   modalBody: {
