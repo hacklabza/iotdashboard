@@ -18,7 +18,7 @@ export const normalizeStatusItems = (device?: Device) => {
 
     const items: Array<{
       key: string;
-      value: string | number;
+      value: string | number | boolean;
       label: string;
       icon?: string;
       color?: string;

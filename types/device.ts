@@ -24,9 +24,15 @@ export interface DeviceStatus {
   id: number;
   created_at: string;
   status: {
-    [key: string]: number | { [key: string]: number };
+    [key: string]: number | boolean | { [key: string]: number };
   };
   device: string;
+}
+
+export interface PinType {
+  id: number;
+  name: string;
+  identifier: string;
 }
 
 export interface PinDisplay {
@@ -35,13 +41,14 @@ export interface PinDisplay {
   value: string;
   colour: string;
   visible: boolean;
-  unit_of_measure: string;
+  unit_of_measure?: string;
 }
 
 export interface PinRule {
   input: {
     threshold?: number;
     sensor_type?: string;
+    topic?: string;
   };
   action: string;
 }
@@ -49,6 +56,7 @@ export interface PinRule {
 export interface DevicePin {
   id: number;
   devices: string[];
+  type: PinType;
   active: boolean;
   name: string;
   identifier: string;

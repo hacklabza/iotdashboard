@@ -52,6 +52,22 @@ export default function Index() {
     setSelectedDevice(null);
   };
 
+  const refreshSelectedDevice = async () => {
+    if (!selectedDevice || !token) return;
+
+    try {
+      const updatedDevice = await deviceService.getDeviceById(token, selectedDevice.id);
+      setSelectedDevice(updatedDevice);
+
+      // Also update the device in the list
+      setDevices(prevDevices =>
+        prevDevices.map(d => d.id === updatedDevice.id ? updatedDevice : d)
+      );
+    } catch (err) {
+      console.error('Error refreshing device:', err);
+    }
+  };
+
   useEffect(() => {
     fetchDevices();
   }, []);
@@ -127,6 +143,7 @@ export default function Index() {
         visible={modalVisible}
         device={selectedDevice}
         onClose={closeModal}
+        onRefresh={refreshSelectedDevice}
       />
     </View>
   );

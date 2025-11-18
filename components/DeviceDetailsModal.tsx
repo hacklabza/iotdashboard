@@ -7,7 +7,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { deviceService } from '@/services/api/deviceService';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDateInterval } from '@/utils/formatters';
-import { getColorValue } from '@/utils/helpers';
+import { getColorValue, getIconEmoji, getUnitSymbol } from '@/utils/helpers';
 import { normalizeStatusItems } from '@/utils/normalize';
 
 interface DeviceDetailsModalProps {
@@ -33,6 +33,55 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
   const [historicalData, setHistoricalData] = useState<HistoricalData>({});
   const [loadingData, setLoadingData] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [togglingPin, setTogglingPin] = useState<string | null>(null);
+  const [toggleOverrides, setToggleOverrides] = useState<{ [key: string]: boolean }>({});
+
+  // Helper function to check if a pin is a toggle
+  const isTogglePin = (statusKey: string): boolean => {
+    if (!device?.pins) return false;
+
+    for (const pin of device.pins) {
+      const displayItem = pin.display.find(d => d.value === statusKey);
+      if (displayItem && pin.type?.identifier === 'toggle') {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Handle toggle pin
+  const handleTogglePin = async (statusKey: string, currentValue: boolean) => {
+    if (!device || !token) return;
+
+    setTogglingPin(statusKey);
+    const newState = currentValue ? 'off' : 'on';
+    const optimisticValue = !currentValue;
+
+    // Optimistically update the toggle state immediately
+    setToggleOverrides(prev => ({
+      ...prev,
+      [statusKey]: optimisticValue,
+    }));
+
+    try {
+      await deviceService.toggleDevicePin(token, device.id, newState);
+
+      // Optionally refresh in background to sync any other changes
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error toggling pin:', error);
+      // Revert the optimistic update on error
+      setToggleOverrides(prev => {
+        const updated = { ...prev };
+        delete updated[statusKey];
+        return updated;
+      });
+    } finally {
+      setTogglingPin(null);
+    }
+  };
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -106,7 +155,12 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
   };
 
   // Handle card click
-  const handleCardPress = async (statusKey: string) => {
+  const handleCardPress = async (statusKey: string, value: any) => {
+    // Don't expand toggles - they're handled by the toggle control
+    if (isTogglePin(statusKey)) {
+      return;
+    }
+
     if (expandedCard === statusKey) {
       // Collapse if already expanded
       setExpandedCard(null);
@@ -124,6 +178,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     if (!visible) {
       setExpandedCard(null);
       setHistoricalData({});
+      setToggleOverrides({});
     }
   }, [visible]);
 
@@ -160,23 +215,19 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                       {statusItems.map((item) => {
                         const isExpanded = expandedCard === item.key;
                         const isHidden = expandedCard !== null && expandedCard !== item.key;
+                        const isToggle = isTogglePin(item.key);
 
                         if (isHidden) return null;
 
                         const cardColor = item.color ? getColorValue(item.color) : colors.primary;
-                        const iconMap: { [key: string]: string } = {
-                          thermometer: '🌡️',
-                          humidity: '💧',
-                          light: '💡',
-                        };
-                        const iconEmoji = item.icon ? iconMap[item.icon.toLowerCase()] || '📌' : '📌';
+                        const iconEmoji = getIconEmoji(item.icon);
+                        const unit = getUnitSymbol(item.unit);
+                        const isTogglingThis = togglingPin === item.key;
 
-                        const unitMap: { [key: string]: string } = {
-                          celsius: '°C',
-                          fahrenheit: '°F',
-                          percentage: '%',
-                        };
-                        const unit = item.unit ? unitMap[item.unit.toLowerCase()] || item.unit : '';
+                        // Use optimistic toggle value if available, otherwise use actual value
+                        const displayValue = toggleOverrides.hasOwnProperty(item.key)
+                          ? toggleOverrides[item.key]
+                          : item.value;
 
                         return (
                           <TouchableOpacity
@@ -189,8 +240,9 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                                 borderLeftColor: cardColor,
                               }
                             ]}
-                            onPress={() => handleCardPress(item.key)}
-                            activeOpacity={0.7}
+                            onPress={() => handleCardPress(item.key, item.value)}
+                            activeOpacity={isToggle ? 1 : 0.7}
+                            disabled={isToggle}
                           >
                             <View style={styles.cardHeader}>
                               <View style={styles.cardHeaderLeft}>
@@ -205,17 +257,48 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                                 </Text>
                               )}
                             </View>
-                            <View style={styles.valueContainer}>
-                              <Text style={[styles.statusValue, { color: cardColor }]}>
-                                {typeof item.value === 'number' ? item.value.toFixed(1) : item.value}
-                              </Text>
-                              {unit && (
-                                <Text style={[styles.unitText, { color: colors.textSecondary }]}>
-                                  {unit}
+
+                            {isToggle ? (
+                              <View style={styles.toggleContainer}>
+                                <TouchableOpacity
+                                  style={[
+                                    styles.toggleButton,
+                                    {
+                                      backgroundColor: displayValue ? cardColor : colors.textDisabled,
+                                    }
+                                  ]}
+                                  onPress={() => handleTogglePin(item.key, displayValue as boolean)}
+                                  disabled={isTogglingThis}
+                                  activeOpacity={0.7}
+                                >
+                                  {isTogglingThis ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                  ) : (
+                                    <View style={[
+                                      styles.toggleIndicator,
+                                      {
+                                        transform: [{ translateX: displayValue ? 22 : 2 }],
+                                      }
+                                    ]} />
+                                  )}
+                                </TouchableOpacity>
+                                <Text style={[styles.toggleLabel, { color: colors.text }]}>
+                                  {displayValue ? 'ON' : 'OFF'}
                                 </Text>
-                              )}
-                            </View>
-                            {item.aggregation && (
+                              </View>
+                            ) : (
+                              <>
+                                <View style={styles.valueContainer}>
+                                  <Text style={[styles.statusValue, { color: cardColor }]}>
+                                    {typeof item.value === 'number' ? item.value.toFixed(1) : item.value}
+                                  </Text>
+                                  {unit && (
+                                    <Text style={[styles.unitText, { color: colors.textSecondary }]}>
+                                      {unit}
+                                    </Text>
+                                  )}
+                                </View>
+                                {item.aggregation && (
                               <View style={styles.aggregationContainer}>
                                 <View style={styles.aggregationRow}>
                                   <View style={styles.aggregationItem}>
@@ -246,7 +329,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                               </View>
                             )}
 
-                            {isExpanded && (
+                            {!isToggle && isExpanded && (
                               <View style={styles.chartContainer}>
                                 {loadingData === item.key ? (
                                   <ActivityIndicator size="large" color={cardColor} />
@@ -299,6 +382,8 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                                   </Text>
                                 )}
                               </View>
+                            )}
+                              </>
                             )}
                           </TouchableOpacity>
                         );
@@ -489,5 +574,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     paddingVertical: 20,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    paddingVertical: 12,
+  },
+  toggleButton: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

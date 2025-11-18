@@ -86,34 +86,6 @@ export const deviceService = {
   },
 
   /**
-   * Toggle device state
-   * @param token Authentication token
-   * @param id Device UUID
-   * @returns Promise with updated device data
-   */
-  async toggleDevice(token: string, id: string): Promise<Device> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/devices/${id}/toggle/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error toggling device:', error);
-      throw error;
-    }
-  },
-
-  /**
    * Fetch historical device statuses
    * @param token Authentication token
    * @param deviceId Device UUID
@@ -154,6 +126,40 @@ export const deviceService = {
       return data;
     } catch (error) {
       console.error('Error fetching device statuses:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Toggle a device pin state
+   * @param token Authentication token
+   * @param deviceId Device UUID
+   * @param state The desired state: "on" or "off"
+   * @returns Promise with updated device data or empty object if no content
+   */
+  async toggleDevicePin(
+    token: string,
+    deviceId: string,
+    state: 'on' | 'off'
+  ): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/devices/${deviceId}/toggle/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Token ${token}`,
+        },
+        body: JSON.stringify({ state }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return {}; // Return empty object for no content (e.g., 202 responses)
+
+    } catch (error) {
+      console.error('Error toggling device pin:', error);
       throw error;
     }
   },

@@ -15,3 +15,29 @@ export const getColorValue = (colorName: string) => {
   };
   return colorMap[colorName.toLowerCase()];
 };
+
+
+export const getIconEmoji = (iconName?: string) => {
+  const iconMap: { [key: string]: string } = {
+    thermometer: '🌡️',
+    humidity: '💧',
+    light: '💡',
+    switch: '🔌',
+  };
+  return iconName ? iconMap[iconName.toLowerCase()] || '📌' : '📌'
+};
+
+
+export const getUnitSymbol = (unitName?: string) => {
+  const unitMap: { [key: string]: string } = {
+    celsius: '°C',
+    fahrenheit: '°F',
+    percentage: '%',
+    lux: 'lx',
+    volts: 'V',
+    amps: 'A',
+    watts: 'W',
+    hertz: 'Hz',
+  };
+  return unitName ? unitMap[unitName.toLowerCase()] || unitName : '';
+};
