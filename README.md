@@ -16,6 +16,20 @@ Simple React Native (Expo) App to display data from IoT devices.
    npx expo start
    ```
 
+## Upgrading
+
+1. Upgrade the Expo SDK
+
+   ```bash
+   npm install expo@^57.0.0 
+   ```
+
+2. Upgrade dependencies
+
+   ```bash
+   npx expo install --fix && npx expo-doctor
+   ```
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
