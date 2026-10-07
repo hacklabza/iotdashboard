@@ -109,14 +109,12 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     try {
       const endDate = moment();
       const startDate = moment().subtract(72, 'hours');
-      const sampleSize = 6;
 
       const response = await deviceService.getDeviceStatuses(
         token,
         device.id,
         startDate.toISOString(),
-        endDate.toISOString(),
-        sampleSize
+        endDate.toISOString()
       );
 
       // Parse the response and extract data for the specific status key

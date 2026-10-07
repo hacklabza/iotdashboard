@@ -5,7 +5,7 @@ const getDisplayConfig = (device: Device, statusKey: string) => {
     if (!device?.pins) return null;
 
     for (const pin of device.pins) {
-        const displayItem = pin.display.find(d => d.value === statusKey && d.visible);
+        const displayItem = pin.display?.find(d => d.value === statusKey);
         if (displayItem) {
             return displayItem;
         }
@@ -53,14 +53,14 @@ export const normalizeStatusItems = (device?: Device) => {
             }
           }
 
-          if (!displayConfig || displayConfig.visible) {
+          if (displayConfig?.visible) {
             items.push({
               key: statusKey,
               value: subValue,
-              label: displayConfig?.label || subKey,
-              icon: displayConfig?.icon,
-              color: displayConfig?.colour,
-              unit: displayConfig?.unit_of_measure,
+              label: displayConfig.label || subKey,
+              icon: displayConfig.icon,
+              color: displayConfig.colour,
+              unit: displayConfig.unit_of_measure,
               aggregation,
             });
           }
@@ -78,14 +78,14 @@ export const normalizeStatusItems = (device?: Device) => {
           }
         }
 
-        if (!displayConfig || displayConfig.visible) {
+        if (displayConfig?.visible) {
           items.push({
             key,
             value,
-            label: displayConfig?.label || key,
-            icon: displayConfig?.icon,
-            color: displayConfig?.colour,
-            unit: displayConfig?.unit_of_measure,
+            label: displayConfig.label || key,
+            icon: displayConfig.icon,
+            color: displayConfig.colour,
+            unit: displayConfig.unit_of_measure,
             aggregation,
           });
         }

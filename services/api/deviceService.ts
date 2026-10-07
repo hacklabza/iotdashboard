@@ -98,14 +98,14 @@ export const deviceService = {
     deviceId: string,
     startDate: string,
     endDate: string,
-    sampleSize: number
+    sampleSize?: number
   ): Promise<any> {
     try {
       const queryParams = new URLSearchParams({
         device: deviceId,
         start_date: startDate,
         end_date: endDate,
-        sample_size: sampleSize.toString(),
+        ...(sampleSize !== undefined ? { sample_size: sampleSize.toString() } : {}),
       });
 
       const url = `${API_BASE_URL}/api/devices/statuses/?${queryParams.toString()}`;

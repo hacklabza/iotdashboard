@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Device } from '@/types/device';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -30,6 +31,15 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
 
   const mapUrl = getStaticMapUrl();
 
+  // Colour-code the wifi icon based on signal strength percentage
+  const getWifiColor = (strength: number) => {
+    if (strength >= 67) return colors.success;
+    if (strength >= 34) return colors.warning;
+    return colors.error;
+  };
+
+  const wifiSignalStrength = device.health?.wifi_signal_strength;
+
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.shadow }]}
@@ -38,25 +48,35 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
     >
       <View style={styles.header}>
         <Text style={[styles.name, { color: colors.text }]}>{device.name}</Text>
-        <View style={styles.badges}>
-          <View style={[
-            styles.statusBadge,
-            { backgroundColor: device.active ? colors.success : colors.inactive }
-          ]}>
-            <Text style={[styles.statusText, { color: colors.primaryText }]}>
-              {device.active ? 'Active' : 'Inactive'}
-            </Text>
+        <View style={styles.headerRow}>
+          <View style={styles.wifiContainer}>
+            {wifiSignalStrength != null && (
+              <>
+                <Ionicons name="wifi" size={20} color={getWifiColor(wifiSignalStrength)} />
+                <Text style={[styles.wifiText, { color: colors.textTertiary }]}>{wifiSignalStrength}%</Text>
+              </>
+            )}
           </View>
-          {device.health && (
+          <View style={styles.badges}>
             <View style={[
-              styles.healthBadge,
-              { backgroundColor: device.health.status ? colors.info : colors.warning }
+              styles.statusBadge,
+              { backgroundColor: device.active ? colors.success : colors.inactive }
             ]}>
               <Text style={[styles.statusText, { color: colors.primaryText }]}>
-                {device.health.status ? '✓ Healthy' : '⚠ Unhealthy'}
+                {device.active ? 'Active' : 'Inactive'}
               </Text>
             </View>
-          )}
+            {device.health && (
+              <View style={[
+                styles.healthBadge,
+                { backgroundColor: device.health.status ? colors.info : colors.warning }
+              ]}>
+                <Text style={[styles.statusText, { color: colors.primaryText }]}>
+                  {device.health.status ? '✓ Healthy' : '⚠ Unhealthy'}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
@@ -106,16 +126,26 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   header: {
+    marginBottom: 8,
+  },
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginTop: 6,
+  },
+  wifiContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  wifiText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   name: {
     fontSize: 18,
     fontWeight: 'bold',
-    flex: 1,
-    marginRight: 8,
   },
   badges: {
     flexDirection: 'row',

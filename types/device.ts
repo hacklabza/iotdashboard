@@ -15,6 +15,8 @@ export interface DeviceLocation {
 export interface DeviceHealth {
   id: number;
   status: boolean;
+  wifi_signal_strength?: number | null;
+  battery_level?: number | null;
   created_at: string;
   updated_at: string;
   device: string;
