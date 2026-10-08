@@ -38,7 +38,21 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
     return colors.error;
   };
 
+  // Pick a battery glyph and colour based on charge percentage
+  const getBatteryIcon = (level: number) => {
+    if (level >= 75) return 'battery-full' as const;
+    if (level >= 40) return 'battery-half' as const;
+    return 'battery-dead' as const;
+  };
+
+  const getBatteryColor = (level: number) => {
+    if (level >= 40) return colors.success;
+    if (level >= 20) return colors.warning;
+    return colors.error;
+  };
+
   const wifiSignalStrength = device.health?.wifi_signal_strength;
+  const batteryLevel = device.health?.battery_level;
 
   return (
     <TouchableOpacity
@@ -49,12 +63,18 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
       <View style={styles.header}>
         <Text style={[styles.name, { color: colors.text }]}>{device.name}</Text>
         <View style={styles.headerRow}>
-          <View style={styles.wifiContainer}>
+          <View style={styles.indicators}>
             {wifiSignalStrength != null && (
-              <>
+              <View style={styles.wifiContainer}>
                 <Ionicons name="wifi" size={20} color={getWifiColor(wifiSignalStrength)} />
                 <Text style={[styles.wifiText, { color: colors.textTertiary }]}>{wifiSignalStrength}%</Text>
-              </>
+              </View>
+            )}
+            {batteryLevel != null && (
+              <View style={styles.wifiContainer}>
+                <Ionicons name={getBatteryIcon(batteryLevel)} size={20} color={getBatteryColor(batteryLevel)} />
+                <Text style={[styles.wifiText, { color: colors.textTertiary }]}>{batteryLevel}%</Text>
+              </View>
             )}
           </View>
           <View style={styles.badges}>
@@ -133,6 +153,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 6,
+  },
+  indicators: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   wifiContainer: {
     flexDirection: 'row',

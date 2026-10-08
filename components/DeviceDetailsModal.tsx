@@ -109,37 +109,52 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     try {
       const endDate = moment();
       const startDate = moment().subtract(72, 'hours');
+      const sampleSize = 6;
 
       const response = await deviceService.getDeviceStatuses(
         token,
         device.id,
         startDate.toISOString(),
-        endDate.toISOString()
+        endDate.toISOString(),
+        sampleSize
       );
+
+      // Results are paginated by the API; follow `next` to collect every
+      // page in the window
+      const results: any[] = [...(response.results ?? [])];
+      let nextUrl: string | null = response.next ?? null;
+      while (nextUrl) {
+        const pageResponse: any = await fetch(nextUrl, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Token ${token}`,
+          },
+        }).then(res => res.json());
+        results.push(...(pageResponse.results ?? []));
+        nextUrl = pageResponse.next ?? null;
+      }
 
       // Parse the response and extract data for the specific status key
       const dataPoints: Array<{ timestamp: string; value: number }> = [];
 
-      if (response.results) {
-        response.results.forEach((status: any) => {
-          const keys = statusKey.split('.');
-          let value = status.status;
+      results.forEach((status: any) => {
+        const keys = statusKey.split('.');
+        let value = status.status;
 
-          // Navigate through nested structure
-          for (const key of keys) {
-            if (value && typeof value === 'object') {
-              value = value[key];
-            }
+        // Navigate through nested structure
+        for (const key of keys) {
+          if (value && typeof value === 'object') {
+            value = value[key];
           }
+        }
 
-          if (typeof value === 'number') {
-            dataPoints.push({
-              timestamp: status.created_at,
-              value: value,
-            });
-          }
-        });
-      }
+        if (typeof value === 'number') {
+          dataPoints.push({
+            timestamp: status.created_at,
+            value: value,
+          });
+        }
+      });
 
       setHistoricalData((prev) => ({
         ...prev,
