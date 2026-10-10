@@ -23,6 +23,11 @@ export const getIconEmoji = (iconName?: string) => {
     humidity: '💧',
     light: '💡',
     switch: '🔌',
+    pool: '🏖️',
+    rain: '🌧️',
+    sun: '☀️',
+    battery: '🔋',
+    electricity: '⚡',
   };
   return iconName ? iconMap[iconName.toLowerCase()] || '📌' : '📌'
 };
@@ -37,7 +42,16 @@ export const getUnitSymbol = (unitName?: string) => {
     volts: 'V',
     amps: 'A',
     watts: 'W',
+    kilowatts: 'kW',
     hertz: 'Hz',
+    millimeters: 'mm',
+    centimeters: 'cm',
+    meters: 'm',
+    kilometers: 'km',
+    inches: 'in',
+    feet: 'ft',
+    yards: 'yd',
+    miles: 'mi',
   };
   return unitName ? unitMap[unitName.toLowerCase()] || unitName : '';
 };

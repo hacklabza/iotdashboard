@@ -41,7 +41,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     if (!device?.pins) return false;
 
     for (const pin of device.pins) {
-      const displayItem = pin.display.find(d => d.value === statusKey);
+      const displayItem = pin.display?.find(d => d.value === statusKey);
       if (displayItem && pin.type?.identifier === 'toggle') {
         return true;
       }
