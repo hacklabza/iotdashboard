@@ -28,6 +28,7 @@ export const getIconEmoji = (iconName?: string) => {
     sun: '☀️',
     battery: '🔋',
     electricity: '⚡',
+    pressure: '🕰️'
   };
   return iconName ? iconMap[iconName.toLowerCase()] || '📌' : '📌'
 };
@@ -52,6 +53,7 @@ export const getUnitSymbol = (unitName?: string) => {
     feet: 'ft',
     yards: 'yd',
     miles: 'mi',
+    hpa: 'hPa',
   };
   return unitName ? unitMap[unitName.toLowerCase()] || unitName : '';
 };

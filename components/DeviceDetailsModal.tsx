@@ -108,8 +108,8 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
     setLoadingData(statusKey);
     try {
       const endDate = moment();
-      const startDate = moment().subtract(72, 'hours');
-      const sampleSize = 6;
+      const startDate = moment().subtract(24, 'hours');
+      const sampleSize = 2;
 
       const response = await deviceService.getDeviceStatuses(
         token,
@@ -349,7 +349,7 @@ export const DeviceDetailsModal: React.FC<DeviceDetailsModalProps> = ({
                                 ) : historicalData[item.key] && historicalData[item.key].length > 0 ? (
                                   <>
                                     <Text style={[styles.chartTitle, { color: colors.text }]}>
-                                      Last 72 Hours
+                                      Last 24 Hours
                                     </Text>
                                     <LineChart
                                       data={{
